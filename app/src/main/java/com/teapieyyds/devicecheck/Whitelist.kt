@@ -57,7 +57,7 @@ object Whitelist {
     fun match(pkg: String): Pair<String, String>? {
         matchExact(pkg)?.let { return it }
         if (matchPrefix(pkg)) {
-            return Pair(null, "系统或厂商自带应用，正常")
+            return Pair<String, String>("", "系统或厂商自带应用，正常")
         }
         return null
     }

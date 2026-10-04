@@ -132,7 +132,7 @@ class ScanEngine(
                 light = Light.GREEN
                 val hitName = hit.first
                 val hitNote = hit.second
-                note = if (hitName != null) "$hitName · $hitNote" else hitNote
+                note = if (hitName.isNotEmpty()) "$hitName · $hitNote" else hitNote
             } else {
                 light = Light.YELLOW
                 note = null
