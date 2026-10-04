@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 状态灯 -->
+    <color name="light_green">#4CAF50</color>
+    <color name="light_yellow">#FFB300</color>
+    <color name="light_red">#E53935</color>
+    <color name="light_gray">#9E9E9E</color>
+
+    <!-- 界面 -->
+    <color name="bg">#FAFAFA</color>
+    <color name="card">#FFFFFF</color>
+    <color name="text_primary">#212121</color>
+    <color name="text_secondary">#757575</color>
+    <color name="line">#E0E0E0</color>
+
+    <!-- 按钮：安全（蓝绿）/ 删除（红） -->
+    <color name="btn_safe">#2E7D32</color>
+    <color name="btn_danger">#C62828</color>
+    <color name="btn_normal">#1976D2</color>
+</resources>

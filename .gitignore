@@ -1,0 +1,22 @@
+# ===== 构建产物 =====
+*.iml
+.gradle
+/build
+/app/build
+/captures
+.kotlin
+.externalNativeBuild
+.cxx
+
+# ===== 本地 / IDE 配置 =====
+local.properties
+.idea/
+.DS_Store
+
+# ===== 本地 ARM64 构建环境专用（云端不需要）=====
+setup_android_env.sh
+/tools
+
+# ===== 平台内部数据（绝不上传）=====
+.backup/
+.operit/

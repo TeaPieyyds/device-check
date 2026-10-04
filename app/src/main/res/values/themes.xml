@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.DeviceCheck" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/btn_normal</item>
+        <item name="colorAccent">@color/btn_normal</item>
+        <item name="android:windowBackground">@color/bg</item>
+        <item name="android:statusBarColor">@color/bg</item>
+    </style>
+
+    <!-- 按钮基础样式：加大可点击区域 -->
+    <style name="BtnBase">
+        <item name="android:minHeight">44dp</item>
+        <item name="android:minWidth">72dp</item>
+        <item name="android:layout_margin">6dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">#FFFFFF</item>
+    </style>
+
+    <style name="BtnSafe" parent="BtnBase">
+        <item name="android:background">@drawable/bg_btn_safe</item>
+    </style>
+
+    <style name="BtnDanger" parent="BtnBase">
+        <item name="android:background">@drawable/bg_btn_danger</item>
+    </style>
+
+    <style name="BtnNormal" parent="BtnBase">
+        <item name="android:background">@drawable/bg_btn_normal</item>
+    </style>
+</resources>
