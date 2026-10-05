@@ -21,6 +21,11 @@
 
     <!-- 关于对话框按钮 -->
     <string name="about_btn_repo">打开开源仓库</string>
-    <string name="about_btn_license">查看完整协议</string>
+    <string name="about_btn_license">查看许可协议</string>
     <string name="about_btn_ok">关闭</string>
+
+    <!-- 许可协议（本地说人话版） -->
+    <string name="license_title">PolyForm Noncommercial License 1.0.0</string>
+    <string name="license_summary">这是一个「非商业」开源协议。\n\n【你可以】\n· 免费下载、安装、使用\n· 阅读、修改源代码\n· 分享给别人（原版或改过的都行）\n· 用于学习、研究、个人兴趣、业余项目\n· 用于学校、慈善机构、公共研究机构等非营利场景\n\n【你不可以】\n· 拿它去卖钱，或用在商业项目里\n· 把它再授权给别人\n· 去掉原作者的版权声明\n\n【想商用】\n请联系作者单独取得授权。\n\n【免责】\n软件按「现状」提供，作者不提供担保，也不为使用造成的损失负责。\n\n点下面按钮可以看到完整英文原文。</string>
+    <string name="license_btn_full">查看完整原文</string>
 </resources>
