@@ -153,6 +153,9 @@ class MainActivity : AppCompatActivity() {
                 btnScan.isEnabled = true
             }
         }
+
+        // 没装 / 没启动 → 弹引导
+        maybeShowShizukuGuide(available, granted)
     }
 
     /** 判断 Shizuku App 是否安装（用于诊断显示） */
@@ -163,7 +166,113 @@ class MainActivity : AppCompatActivity() {
         false
     }
 
+    // ==================== Shizuku 引导 ====================
+
+    /** Shizuku 官方下载地址（最新稳定版） */
+    private val SHIZUKU_DOWNLOAD_URL =
+        "https://github.com/RikkaApps/Shizuku/releases/download/v13.6.0/shizuku-v13.6.0.r1086.2650830c-release.apk"
+
+    /** Shizuku 安装 + 授权教程 */
+    private val SHIZUKU_TUTORIAL_URL = "https://b23.tv/QwC2wz4"
+
+    /** 本次启动是否已经弹过引导（避免 onResume 反复弹） */
+    private var guideShownThisLaunch = false
+
+    /**
+     * 检查是否需要弹「引导弹窗」：
+     * - 没装 Shizuku → 弹「需要安装」
+     * - 装了但服务没运行 → 弹「需要启动」
+     * 已授权/正常运行时不弹。
+     */
+    private fun maybeShowShizukuGuide(available: Boolean, granted: Boolean) {
+        if (granted) return
+        if (guideShownThisLaunch) return
+        guideShownThisLaunch = true
+
+        if (!isShizukuInstalled()) {
+            showGuideDialog(
+                title = getString(R.string.guide_title_not_installed),
+                message = getString(R.string.guide_msg_not_installed),
+                showDownload = true
+            )
+        } else if (!available) {
+            showGuideDialog(
+                title = getString(R.string.guide_title_not_running),
+                message = getString(R.string.guide_msg_not_running),
+                showDownload = false
+            )
+        } else {
+            // 装了、服务在跑、但没授权 —— 代码里会自动发起授权请求，让弹窗自然出现
+            guideShownThisLaunch = false
+        }
+    }
+
+    private fun showGuideDialog(title: String, message: String, showDownload: Boolean) {
+        val b = androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(title)
+            .setMessage(message)
+        if (showDownload) {
+            b.setPositiveButton(R.string.guide_btn_download) { _, _ ->
+                openUrl(SHIZUKU_DOWNLOAD_URL)
+            }
+        } else {
+            b.setPositiveButton(R.string.guide_btn_ok, null)
+        }
+        b.setNeutralButton(R.string.guide_btn_tutorial) { _, _ ->
+            openUrl(SHIZUKU_TUTORIAL_URL)
+        }
+        if (!showDownload) {
+            // 已装未启动：额外给一个「去启动」入口
+            b.setNegativeButton("去启动 Shizuku") { _, _ ->
+                launchShizukuApp()
+            }
+        }
+        b.show()
+    }
+
+    /** 打开外部链接（APK 下载 / 教程） */
+    private fun openUrl(url: String) {
+        try {
+            val intent = android.content.Intent(
+                android.content.Intent.ACTION_VIEW,
+                android.net.Uri.parse(url)
+            ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+        } catch (t: Throwable) {
+            // 没有浏览器等：把链接显示出来让用户手动复制
+            android.widget.Toast.makeText(
+                this,
+                getString(R.string.guide_link_failed) + "\n" + url,
+                android.widget.Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    /** 尝试拉起 Shizuku App 主界面（让用户去启动服务） */
+    private fun launchShizukuApp() {
+        try {
+            val i = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+            if (i != null) startActivity(i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (t: Throwable) {
+            // 忽略
+        }
+    }
+
     private fun startScan() {
+        // 扫描前再次校验 Shizuku：没有权限就直接引导，不进入扫描流程
+        val available = ShizukuShell.isAvailable()
+        val granted = available && ShizukuShell.hasPermission()
+        if (!granted) {
+            android.widget.Toast.makeText(
+                this,
+                getString(R.string.guide_toast_need_shizuku),
+                android.widget.Toast.LENGTH_SHORT
+            ).show()
+            guideShownThisLaunch = false   // 允许用户点扫描时重新弹一次引导
+            checkShizukuState()
+            return
+        }
+
         // 每次扫描清空
         items.clear()
         adapter.notifyDataSetChanged()

@@ -3,4 +3,15 @@
     <string name="app_name">设备体检</string>
     <string name="shizuku_need_permission">需要 Shizuku 授权才能读取系统信息\n请在弹窗中点「允许」</string>
     <string name="shizuku_not_running">Shizuku 服务未运行\n请先启动 Shizuku 后再回来</string>
+
+    <!-- Shizuku 引导弹窗 -->
+    <string name="guide_title_not_installed">需要 Shizuku 才能运行</string>
+    <string name="guide_msg_not_installed">本应用需要 Shizuku 权限才能读取系统信息（设备管理员、无障碍服务、自启动项等）。\n\nShizuku 是一个开源工具，通过它可以让应用在「无需 Root」的前提下使用 Android 系统接口。\n\n注意：Shizuku 需要先安装，并在每次开机后手动启动一次。\n\n——\n《设备体检》本身不联网、不上传任何数据。</string>
+    <string name="guide_btn_download">下载 Shizuku</string>
+    <string name="guide_btn_tutorial">安装授权教程</string>
+    <string name="guide_btn_ok">我知道了</string>
+    <string name="guide_title_not_running">Shizuku 还没启动</string>
+    <string name="guide_msg_not_running">Shizuku 已安装，但服务没有运行。\n\n请打开 Shizuku App，点「启动」，按提示完成（无线调试或 Root）后，回到本应用即可。\n\n第一次用可以看下面的教程。</string>
+    <string name="guide_toast_need_shizuku">请先安装/启动 Shizuku 并授权后再扫描</string>
+    <string name="guide_link_failed">无法打开链接，可手动访问：</string>
 </resources>
