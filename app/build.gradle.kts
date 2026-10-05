@@ -1,14 +1,16 @@
 import java.util.Properties
+import java.io.File as JFile
 
 plugins {
     // AGP 9.0 起内置 Kotlin 支持，无需再 apply kotlin-android 插件
     alias(libs.plugins.android.application)
 }
 
-// 签名信息来源（按优先级）：
-//  1. 环境变量 KEYSTORE_FILE / KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD（CI 用，文件由 workflow 提前还原）
-//  2. 根目录 keystore.properties（本地用）
-// 都没有则 release 不签名（产出 unsigned）。
+// ============ 签名信息解析 ============
+// 支持两种来源：
+//  A. KEYSTORE_FILE 指向已存在的 keystore 文件（推荐，workflow 先解码）
+//  B. KEYSTORE_BASE64 直接给 base64，由脚本现场解码
+// 另可用根目录 keystore.properties 做本地开发。
 val keystoreProps = Properties().apply {
     val f = rootProject.file("keystore.properties")
     if (f.exists()) f.inputStream().use { load(it) }
@@ -17,12 +19,43 @@ val keystoreProps = Properties().apply {
 fun prop(key: String, envKey: String): String? =
     System.getenv(envKey)?.takeIf { it.isNotBlank() } ?: keystoreProps.getProperty(key)
 
-val ksPath: String? = prop("storeFile", "KEYSTORE_FILE")
+/**
+ * 用反射调用 java.util.Base64 解码。
+ * 不走 import / 全限定名，避免 Gradle Kotlin DSL 在 android{} 作用域内
+ * 把 `java` 解析成 android 扩展属性（Unresolved reference 'util'）。
+ */
+fun decodeBase64ToFile(b64: String, out: JFile) {
+    out.parentFile?.mkdirs()
+    val decoder = Class.forName("java.util.Base64")
+        .getMethod("getDecoder")
+        .invoke(null)
+    val bytes = decoder.javaClass
+        .getMethod("decode", String::class.java)
+        .invoke(decoder, b64) as ByteArray
+    out.writeBytes(bytes)
+}
+
+val ksFromFile: String? = prop("storeFile", "KEYSTORE_FILE")
+val ksFromB64: String? = prop("storeFileBase64", "KEYSTORE_BASE64")
 val ksPwd: String? = prop("storePassword", "KEYSTORE_PASSWORD")
 val ksAlias: String? = prop("keyAlias", "KEY_ALIAS")
 val ksKeyPwd: String? = prop("keyPassword", "KEY_PASSWORD")
-val hasSigning: Boolean =
-    !ksPath.isNullOrBlank() && ksPwd != null && ksAlias != null && ksKeyPwd != null
+
+/** 最终用于签名的 keystore 文件（可能为 null） */
+val resolvedKeystore: JFile? = run {
+    if (ksPwd == null || ksAlias == null || ksKeyPwd == null) return@run null
+    // 优先用现成文件
+    val f = ksFromFile?.takeIf { it.isNotBlank() }?.let { JFile(it) }
+    if (f != null && f.exists()) return@run f
+    // 退而求其次：base64 现场解码
+    if (!ksFromB64.isNullOrBlank()) {
+        val out = JFile(rootProject.projectDir, "build/signing/release.jks")
+        decodeBase64ToFile(ksFromB64, out)
+        return@run out
+    }
+    null
+}
+val hasSigning: Boolean = resolvedKeystore != null
 
 android {
     namespace = "com.teapieyyds.devicecheck"
@@ -39,7 +72,7 @@ android {
     signingConfigs {
         if (hasSigning) {
             create("release") {
-                storeFile = rootProject.file(ksPath!!)
+                storeFile = resolvedKeystore
                 storePassword = ksPwd
                 keyAlias = ksAlias
                 keyPassword = ksKeyPwd
