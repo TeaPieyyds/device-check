@@ -20,3 +20,11 @@ setup_android_env.sh
 # ===== 平台内部数据（绝不上传）=====
 .backup/
 .operit/
+
+# ===== 签名相关（绝不提交 keystore / 密码）=====
+keystore.properties
+*.jks
+*.keystore
+*.bks
+*.pk8
+*.pem
