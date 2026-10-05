@@ -29,6 +29,27 @@ object ShizukuShell {
         false
     }
 
+    /** 当前权限状态码：用于诊断 */
+    fun permissionStatusCode(): Int = try {
+        Shizuku.checkSelfPermission()
+    } catch (t: Throwable) {
+        -999
+    }
+
+    /** 诊断信息：返回一段人话描述当前状态 */
+    fun diagnose(installed: Boolean): String {
+        val sb = StringBuilder()
+        sb.append("Shizuku 诊断\n")
+        sb.append("· Shizuku 已安装：").append(installed).append('\n')
+        val ping = try { Shizuku.pingBinder() } catch (t: Throwable) { false }
+        sb.append("· 服务可达(pingBinder)：").append(ping).append('\n')
+        val code = permissionStatusCode()
+        sb.append("· 权限状态码：").append(code).append('\n')
+        sb.append("  （0=已授权，-1=被拒绝，-999=读取异常）\n")
+        sb.append("· 本应用 uid：").append(android.os.Process.myUid()).append('\n')
+        return sb.toString()
+    }
+
     /** 请求授权 */
     fun requestPermission() {
         try {

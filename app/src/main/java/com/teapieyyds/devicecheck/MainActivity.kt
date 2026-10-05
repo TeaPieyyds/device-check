@@ -105,26 +105,40 @@ class MainActivity : AppCompatActivity() {
         val available = ShizukuShell.isAvailable()
         val granted = available && ShizukuShell.hasPermission()
 
+        // 把诊断信息打到日志区，方便定位
+        val diag = ShizukuShell.diagnose(isShizukuInstalled())
+        appendLog(
+            LogEntry(
+                human = "Shizuku 状态：服务${if (available) "在线" else "离线"} / 授权${if (granted) "已获得" else "未获得"}",
+                raw = diag
+            )
+        )
+
         when {
             granted -> {
-                // 已授权：隐藏提示，扫描可用
                 shizukuTip.visibility = View.GONE
                 btnScan.isEnabled = true
             }
             available -> {
-                // Shizuku 在跑，但本应用没授权：显示提示 + 主动请求
                 shizukuTip.text = getString(R.string.shizuku_need_permission)
                 shizukuTip.visibility = View.VISIBLE
                 btnScan.isEnabled = true
                 ShizukuShell.requestPermission()
             }
             else -> {
-                // Shizuku 服务没运行
                 shizukuTip.text = getString(R.string.shizuku_not_running)
                 shizukuTip.visibility = View.VISIBLE
                 btnScan.isEnabled = true
             }
         }
+    }
+
+    /** 判断 Shizuku App 是否安装（用于诊断显示） */
+    private fun isShizukuInstalled(): Boolean = try {
+        packageManager.getPackageInfo("moe.shizuku.privileged.api", 0)
+        true
+    } catch (t: Throwable) {
+        false
     }
 
     private fun startScan() {
