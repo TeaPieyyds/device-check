@@ -14,4 +14,13 @@
     <string name="guide_msg_not_running">Shizuku 已安装，但服务没有运行。\n\n请打开 Shizuku App，点「启动」，按提示完成（无线调试或 Root）后，回到本应用即可。\n\n第一次用可以看下面的教程。</string>
     <string name="guide_toast_need_shizuku">请先安装/启动 Shizuku 并授权后再扫描</string>
     <string name="guide_link_failed">无法打开链接，可手动访问：</string>
+
+    <!-- 关于 -->
+    <string name="about_title">关于「设备体检」</string>
+    <string name="about_body">一个老老实实帮你「看看手机里都装了啥」的小工具。\n\n【它能做什么】\n翻一翻你手机里的应用清单，把「有权限管事儿的东西」列出来给你看：\n· 哪些应用能被当成设备管理员\n· 哪些应用开了无障碍服务（能代替你点屏幕）\n· 哪些应用会跟着开机一起启动\n· 以及所有安装了的东西，哪些我认识、哪些不认识\n\n【它不做什么】\n· 不联网，不上传，数据全在你手机里\n· 不替你下结论，不给你贴「病毒/危险」的标签\n· 不认识的应用，它只会说「我不认识，你自己看看」，不会瞎吓你\n· 不删东西——真想删，得你自己点好几下确认\n\n【为什么需要 Shizuku】\n安卓从某个版本开始，普通应用看不到别的应用的信息了。Shizuku 能让你在不 Root 的前提下，把这些信息读出来。它跟本应用一样，是开源、透明的。\n\n【开源】\n代码全部公开，欢迎来看、来挑毛病。\n仓库：https://github.com/TeaPieyyds/device-check\n\n【许可协议】\nPolyForm Noncommercial License 1.0.0\n说人话就是：\n· 你可以随便下载、使用、修改、分享给朋友\n· 但不能拿去卖钱，也不能用在商业项目里\n· 想商用的话，请联系作者单独授权\n· 软件按「现状」提供，作者不担保它一定不出错\n\n【作者】\n一只屑茶派 · TeaPieyyds</string>
+
+    <!-- 关于对话框按钮 -->
+    <string name="about_btn_repo">打开开源仓库</string>
+    <string name="about_btn_license">查看完整协议</string>
+    <string name="about_btn_ok">关闭</string>
 </resources>

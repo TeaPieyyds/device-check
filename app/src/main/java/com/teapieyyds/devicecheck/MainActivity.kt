@@ -73,6 +73,7 @@ class MainActivity : AppCompatActivity() {
         shizukuTip = findViewById(R.id.tv_shizuku_tip)
         sortBar = findViewById(R.id.sort_bar)
         btnSort = findViewById(R.id.btn_sort)
+        findViewById<View>(R.id.btn_about).setOnClickListener { showAboutDialog() }
 
         adapter = AppAdapter(
             context = this,
@@ -256,6 +257,49 @@ class MainActivity : AppCompatActivity() {
         } catch (t: Throwable) {
             // 忽略
         }
+    }
+
+    // ==================== 关于 ====================
+
+    private val ABOUT_REPO_URL = "https://github.com/TeaPieyyds/device-check"
+
+    private fun showAboutDialog() {
+        val msg = getString(R.string.about_body)
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(R.string.about_title)
+            .setMessage(msg)
+            .setPositiveButton(R.string.about_btn_repo) { _, _ ->
+                openUrl(ABOUT_REPO_URL)
+            }
+            .setNeutralButton(R.string.about_btn_license) { _, _ ->
+                showLicenseDialog()
+            }
+            .setNegativeButton(R.string.about_btn_ok, null)
+            .show()
+    }
+
+    /** 展示完整协议（从 assets/license.txt 读取，纯本地） */
+    private fun showLicenseDialog() {
+        val text = try {
+            assets.open("license.txt").bufferedReader().use { it.readText() }
+        } catch (t: Throwable) {
+            "读取协议文件失败：" + t.message
+        }
+        // 协议很长，用可滚动的 TextView 包在 ScrollView 里
+        val density = resources.displayMetrics.density
+        val pad = (16 * density).toInt()
+        val tv = android.widget.TextView(this).apply {
+            text = text
+            textSize = 12f
+            setTextIsSelectable(true)
+            setPadding(pad, pad, pad, pad)
+        }
+        val sv = android.widget.ScrollView(this).apply { addView(tv) }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("PolyForm Noncommercial License 1.0.0")
+            .setView(sv)
+            .setPositiveButton(R.string.about_btn_ok, null)
+            .show()
     }
 
     private fun startScan() {
