@@ -135,20 +135,26 @@ class AppAdapter(
 
         // 删除：点 3 下
         btnDelete.text = deleteButtonText(item)
+        // 复位颜色（列表复用时避免残留上一次的高亮）
+        btnDelete.setTextColor(Color.parseColor("#D32F2F"))
         btnDelete.setOnClickListener {
             val cur = (deleteClick[item.pkg] ?: 0) + 1
             if (cur >= 3) {
                 deleteClick.remove(item.pkg)
-                onLog(LogEntry("打开系统卸载页：${item.pkg}", "ACTION_DELETE ${item.pkg}"))
-                openSystemUninstall(item)
                 btnDelete.text = deleteButtonText(item)
+                openSystemUninstall(item)
             } else {
                 deleteClick[item.pkg] = cur
                 btnDelete.text = deleteButtonText(item)
+                // 视觉反馈：点过之后按钮变醒目，让用户知道点在生效
+                btnDelete.setTextColor(Color.parseColor("#FFFFFF"))
+                toast("再点 ${3 - cur} 次确认删除")
+                // 1.8 秒未继续则复位
                 btnDelete.postDelayed({
                     if (deleteClick[item.pkg] == cur) {
                         deleteClick.remove(item.pkg)
                         btnDelete.text = deleteButtonText(item)
+                        btnDelete.setTextColor(Color.parseColor("#D32F2F"))
                     }
                 }, 1800)
             }
@@ -211,15 +217,52 @@ class AppAdapter(
         }
     }
 
-    /** 跳转系统卸载页 */
+    /**
+     * 跳转系统卸载页。
+     *
+     * 兼容性说明：
+     *  - 优先用 ACTION_DELETE（直接弹卸载确认框）
+     *  - 部分 ROM（如 ColorOS / MIUI）会拦截 ACTION_DELETE，此时降级到
+     *    「应用详情页」，用户可在那里手动点卸载
+     *  - 不添加 FLAG_ACTIVITY_NEW_TASK（Context 为 Activity 时不需要，
+     *    加了反而可能被部分 ROM 拒绝）
+     *  - 失败时给出可见反馈（Toast + 日志），避免「点了没反应」
+     */
     private fun openSystemUninstall(item: AppItem) {
-        val intent = Intent(Intent.ACTION_DELETE).apply {
-            data = Uri.parse("package:${item.pkg}")
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        runCatching { context.startActivity(intent) }
-            .onFailure {
-                onLog(LogEntry("无法打开卸载页：${item.pkg}", "ACTION_DELETE failed"))
+        // 方案 A：系统卸载确认框
+        try {
+            val intent = Intent(Intent.ACTION_DELETE).apply {
+                data = Uri.parse("package:${item.pkg}")
+                putExtra(Intent.EXTRA_RETURN_RESULT, false)
             }
+            context.startActivity(intent)
+            onLog(LogEntry("已打开系统卸载页：${item.pkg}", "ACTION_DELETE ${item.pkg}"))
+            return
+        } catch (t: Throwable) {
+            onLog(LogEntry("ACTION_DELETE 不可用，尝试应用详情页", "ACTION_DELETE failed: ${t.message}"))
+        }
+
+        // 方案 B：应用详情页（几乎所有 ROM 都支持）
+        try {
+            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${item.pkg}")
+            }
+            context.startActivity(intent)
+            onLog(
+                LogEntry(
+                    "已打开「${item.displayName}」的应用信息页，请在那里点「卸载」",
+                    "ACTION_APPLICATION_DETAILS_SETTINGS ${item.pkg}"
+                )
+            )
+        } catch (t: Throwable) {
+            // 方案 C：都失败，至少让用户看到反馈
+            toast("无法打开卸载页，请到系统设置里手动卸载")
+            onLog(LogEntry("无法打开卸载页：${item.pkg}", "all uninstall intents failed: ${t.message}"))
+        }
+    }
+
+    /** 轻量 Toast，避免依赖 Activity */
+    private fun toast(msg: String) {
+        android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_LONG).show()
     }
 }
