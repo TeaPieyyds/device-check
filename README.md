@@ -35,14 +35,18 @@
 
 ### 关于「删除」按钮
 
-它**不直接卸载任何东西**，只是帮你跳到系统的卸载界面：
+它**不直接卸载任何东西**，只是帮你打开系统的卸载页面：
 
-1. 优先调用 `ACTION_DELETE`，弹出系统卸载确认框
-2. 若当前 ROM 拦截了该 Intent（如部分 ColorOS / MIUI），**自动降级**到「应用信息页」，
-   你可以在那里手动点卸载
-3. 两条路都走不通时，会明确提示「请到系统设置里手动卸载」
+1. **优先**：用 **Shizuku 的 shell 身份** 执行
+   `am start -a android.intent.action.DELETE -d package:<包名>`
+   —— 因为 shell 拥有 `DELETE_PACKAGES` 权限，可以**绕开厂商对第三方 App 的拦截**
+   （ColorOS / OriginOS 等 ROM 会拦截普通 App 发起的卸载 Intent，
+   表现为「跳一下又回来」）
+2. **降级**：若 Shizuku 不可用或执行失败 → 普通 `ACTION_DELETE`
+3. **再降级**：跳转「应用信息页」，你在那里也能点卸载
+4. **兜底**：都不行时明确提示「请到系统设置里手动卸载」，绝不静默失败
 
-> 判定是否卸载，最终由**系统**和**你**决定，本应用不代劳。
+> 是否卸载，最终由**你在系统页面上**决定，本应用不代劳。
 
 ---
 
@@ -73,6 +77,26 @@
 
 ---
 
+## 下载安装
+
+> 本应用**未上架任何应用商店**，请只从本仓库获取。
+
+**方式一：Actions 构建产物（推荐）**
+
+1. 打开仓库的 [**Actions**](../../actions) 页面
+2. 点进最新一次成功的 `Build APK` 运行
+3. 在页面底部 **Artifacts** 区域下载 `devicecheck-release-signed`
+4. 解压得到 `app-release.apk`，安装即可
+
+**方式二：自己构建**
+
+见下方「构建」一节。
+
+> ⚠️ 安装时系统可能提示「未知来源」，需要手动允许。
+> 本应用不联网、不上传数据，如有疑虑可自行审阅源码或直接构建。
+
+---
+
 ## 构建
 
 ### 本地构建
@@ -83,9 +107,40 @@
 
 产物：`app/build/outputs/apk/debug/app-debug.apk`
 
-### GitHub Actions（推荐）
+### 本地构建签名版
 
-推送到 `main` 分支后自动构建，在仓库 **Actions** 页面下载 Artifacts。
+在项目根目录新建 `keystore.properties`（**已在 .gitignore 中，不会提交**）：
+
+```properties
+storeFile=/绝对路径/your.jks
+storePassword=你的库密码
+keyAlias=你的别名
+keyPassword=你的密钥密码
+```
+
+然后：
+
+```bash
+./gradlew :app:assembleRelease
+```
+
+产物：`app/build/outputs/apk/release/app-release.apk`
+
+### GitHub Actions（本仓库使用的方式）
+
+推送到 `main` 分支后自动构建 Debug + Release 两个 APK。
+
+Release 签名所需的 keystore 通过 **GitHub Secrets** 注入，不会进入代码库：
+
+| Secret 名称 | 内容 |
+|---|---|
+| `KEYSTORE_BASE64` | keystore 文件的 base64 编码 |
+| `KEYSTORE_PASSWORD` | 库密码 |
+| `KEY_ALIAS` | 密钥别名 |
+| `KEY_PASSWORD` | 密钥密码 |
+
+> 生成 base64：`base64 -w 0 your.jks`
+> **切勿**把 keystore 或密码直接提交到仓库。
 
 ---
 
