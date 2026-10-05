@@ -50,6 +50,37 @@
         android:visibility="gone"
         android:indeterminate="true" />
 
+    <!-- 排序切换行 -->
+    <LinearLayout
+        android:id="@+id/sort_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="排序"
+            android:textSize="12sp"
+            android:textColor="@color/text_secondary" />
+
+        <TextView
+            android:id="@+id/btn_sort"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="5dp"
+            android:background="@drawable/bg_btn_normal"
+            android:text="可疑优先"
+            android:textSize="12sp"
+            android:textColor="@color/text_primary" />
+    </LinearLayout>
+
     <!-- Shizuku 提示条 -->
     <TextView
         android:id="@+id/tv_shizuku_tip"

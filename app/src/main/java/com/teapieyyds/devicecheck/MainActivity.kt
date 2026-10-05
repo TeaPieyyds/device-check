@@ -26,9 +26,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnLogMode: TextView
     private lateinit var progress: View
     private lateinit var shizukuTip: TextView
+    private lateinit var sortBar: View
+    private lateinit var btnSort: TextView
 
     private val items = mutableListOf<AppItem>()
     private lateinit var adapter: AppAdapter
+
+    /** true=可疑优先（黄在前），false=正常优先（绿在前） */
+    private var suspiciousFirst = true
 
     /** 日志全量（双模式同时保存） */
     private val logEntries = mutableListOf<LogEntry>()
@@ -66,6 +71,8 @@ class MainActivity : AppCompatActivity() {
         btnLogMode = findViewById(R.id.btn_log_mode)
         progress = findViewById(R.id.progress)
         shizukuTip = findViewById(R.id.tv_shizuku_tip)
+        sortBar = findViewById(R.id.sort_bar)
+        btnSort = findViewById(R.id.btn_sort)
 
         adapter = AppAdapter(
             context = this,
@@ -82,6 +89,21 @@ class MainActivity : AppCompatActivity() {
             humanMode = !humanMode
             btnLogMode.text = if (humanMode) "人话" else "原样"
             renderLog()
+        }
+
+        // 排序切换
+        btnSort.setOnClickListener {
+            suspiciousFirst = !suspiciousFirst
+            btnSort.text = if (suspiciousFirst) "可疑优先" else "正常优先"
+            sortItems()
+            adapter.notifyDataSetChanged()
+            listView.setSelection(0)
+            appendLog(
+                LogEntry(
+                    human = "排序已切换：${if (suspiciousFirst) "可疑优先（需判断的在前）" else "正常优先（已知的在前）"}",
+                    raw = "sort mode = ${if (suspiciousFirst) "suspicious_first" else "known_first"}"
+                )
+            )
         }
 
         // 注册 Shizuku 监听器
@@ -149,6 +171,7 @@ class MainActivity : AppCompatActivity() {
         renderLog()
         tvStatus.text = "扫描中…"
         progress.visibility = View.VISIBLE
+        sortBar.visibility = View.GONE
         btnScan.isEnabled = false
 
         engine?.shutdown()
@@ -171,10 +194,17 @@ class MainActivity : AppCompatActivity() {
                 runOnUiThread {
                     progress.visibility = View.GONE
                     btnScan.isEnabled = true
-                    checkShizukuState()
-                    if (tvStatus.text == "扫描完成" || tvStatus.text == "扫描出错") {
-                        // 保持原状态
+                    // 有结果才显示排序栏，并重置为默认顺序
+                    if (items.isNotEmpty()) {
+                        suspiciousFirst = true
+                        btnSort.text = "可疑优先"
+                        sortItems()
+                        adapter.notifyDataSetChanged()
+                        sortBar.visibility = View.VISIBLE
+                    } else {
+                        sortBar.visibility = View.GONE
                     }
+                    checkShizukuState()
                 }
             }
         }
@@ -202,7 +232,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun appendItem(item: AppItem) {
         items.add(item)
+        // 边扫边按当前顺序插入，用户能看到实时排序
+        sortItems()
         adapter.notifyDataSetChanged()
+    }
+
+    /**
+     * 按当前排序模式重排 items。
+     * 权重：可疑(黄)=0，正常(绿)=1，红=0（未用）。
+     * 同一权重内保持原有相对顺序（稳定），避免每次刷新都跳动。
+     */
+    private fun sortItems() {
+        val weight = { l: com.teapieyyds.devicecheck.model.Light ->
+            when (l) {
+                com.teapieyyds.devicecheck.model.Light.YELLOW -> 0
+                com.teapieyyds.devicecheck.model.Light.RED -> 0
+                com.teapieyyds.devicecheck.model.Light.GREEN -> 1
+            }
+        }
+        val sorted = items.withIndex().sortedWith(
+            compareBy(
+                { if (suspiciousFirst) weight(it.value.light) else -weight(it.value.light) },
+                { it.index }
+            )
+        ).map { it.value }
+        items.clear()
+        items.addAll(sorted)
     }
 
     private fun removeItem(item: AppItem) {
