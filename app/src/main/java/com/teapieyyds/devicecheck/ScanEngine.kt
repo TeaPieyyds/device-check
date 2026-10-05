@@ -112,6 +112,12 @@ class ScanEngine(
                 pm.getApplicationLabel(ai).toString()
             }.getOrNull()
 
+            // 是否为系统分区预装应用（出厂自带）
+            val isSystemApp = runCatching {
+                val ai: ApplicationInfo = pm.getApplicationInfo(pkg, 0)
+                (ai.flags and (ApplicationInfo.FLAG_SYSTEM or ApplicationInfo.FLAG_UPDATED_SYSTEM_APP)) != 0
+            }.getOrDefault(false)
+
             val launchable = runCatching {
                 pm.getLaunchIntentForPackage(pkg) != null
             }.getOrDefault(false)
@@ -129,11 +135,17 @@ class ScanEngine(
             val light: Light
             val note: String?
             if (hit != null) {
+                // 1. 白名单命中：我认识它
                 light = Light.GREEN
                 val hitName = hit.first
                 val hitNote = hit.second
                 note = if (hitName.isNotEmpty()) "$hitName · $hitNote" else hitNote
+            } else if (isSystemApp) {
+                // 2. 系统分区预装：出厂自带，不需要用户判断
+                light = Light.GREEN
+                note = "系统预装应用 · 出厂自带，正常"
             } else {
+                // 3. 其余：我不认识，交给用户判断
                 light = Light.YELLOW
                 note = null
             }
