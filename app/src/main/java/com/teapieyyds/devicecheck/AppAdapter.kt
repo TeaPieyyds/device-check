@@ -13,6 +13,7 @@ import android.widget.TextView
 import com.teapieyyds.devicecheck.model.AppItem
 import com.teapieyyds.devicecheck.model.Light
 import com.teapieyyds.devicecheck.model.LogEntry
+import com.teapieyyds.devicecheck.shizuku.ShizukuShell
 
 /**
  * 应用列表适配器。
@@ -135,26 +136,21 @@ class AppAdapter(
 
         // 删除：点 3 下
         btnDelete.text = deleteButtonText(item)
-        // 复位颜色（列表复用时避免残留上一次的高亮）
-        btnDelete.setTextColor(Color.parseColor("#D32F2F"))
         btnDelete.setOnClickListener {
             val cur = (deleteClick[item.pkg] ?: 0) + 1
             if (cur >= 3) {
                 deleteClick.remove(item.pkg)
                 btnDelete.text = deleteButtonText(item)
-                openSystemUninstall(item)
+                openUninstall(item, btnDelete)
             } else {
                 deleteClick[item.pkg] = cur
                 btnDelete.text = deleteButtonText(item)
-                // 视觉反馈：点过之后按钮变醒目，让用户知道点在生效
-                btnDelete.setTextColor(Color.parseColor("#FFFFFF"))
-                toast("再点 ${3 - cur} 次确认删除")
-                // 1.8 秒未继续则复位
+                // 可见反馈：告诉用户还要点几下
+                toast("再点 ${3 - cur} 次，打开系统卸载页")
                 btnDelete.postDelayed({
                     if (deleteClick[item.pkg] == cur) {
                         deleteClick.remove(item.pkg)
                         btnDelete.text = deleteButtonText(item)
-                        btnDelete.setTextColor(Color.parseColor("#D32F2F"))
                     }
                 }, 1800)
             }
@@ -218,31 +214,81 @@ class AppAdapter(
     }
 
     /**
-     * 跳转系统卸载页。
+     * 打开系统卸载页（**经由 Shizuku 的 shell 身份**）。
      *
-     * 兼容性说明：
-     *  - 优先用 ACTION_DELETE（直接弹卸载确认框）
-     *  - 部分 ROM（如 ColorOS / MIUI）会拦截 ACTION_DELETE，此时降级到
-     *    「应用详情页」，用户可在那里手动点卸载
-     *  - 不添加 FLAG_ACTIVITY_NEW_TASK（Context 为 Activity 时不需要，
-     *    加了反而可能被部分 ROM 拒绝）
-     *  - 失败时给出可见反馈（Toast + 日志），避免「点了没反应」
+     * 为什么不用普通 startActivity？
+     *  - 普通 App 发 ACTION_DELETE，在 ColorOS / OriginOS 等 ROM 上会被拦，
+     *    表现为「跳一下又回来」（主人遇到的就是这个）。
+     *  - 用 Shizuku 以 shell 身份 `am start`，拥有 DELETE_PACKAGES 权限，
+     *    系统卸载页可以正常打开。
+     *
+     * 保险措施：
+     *  - shell 调用是阻塞的，放到后台线程执行，避免卡住 UI
+     *  - 若 Shizuku 不可用 / 执行失败，自动降级为普通 startActivity
+     *  - 仍失败则 Toast 提示，绝不静默
      */
-    private fun openSystemUninstall(item: AppItem) {
-        // 方案 A：系统卸载确认框
+    private fun openUninstall(item: AppItem, btn: View) {
+        if (!ShizukuShell.hasPermission()) {
+            // 没有 Shizuku 权限：退回普通方式（部分 ROM 可用）
+            fallbackUninstall(item)
+            return
+        }
+
+        if (btn is android.widget.Button) {
+            btn.isEnabled = false
+            btn.text = "处理中…"
+        }
+
+        Thread {
+            val result = try {
+                ShizukuShell.openUninstallPage(item.pkg)
+            } catch (t: Throwable) {
+                ShizukuShell.UninstallResult.Failure("执行异常：${t.message}")
+            }
+
+            (context as? android.app.Activity)?.runOnUiThread {
+                if (btn is android.widget.Button) {
+                    btn.isEnabled = true
+                    btn.text = deleteButtonText(item)
+                }
+                when (result) {
+                    is ShizukuShell.UninstallResult.Success -> {
+                        onLog(
+                            LogEntry(
+                                "已打开「${item.displayName}」的系统卸载页",
+                                "am start ACTION_DELETE package:${item.pkg}"
+                            )
+                        )
+                    }
+                    is ShizukuShell.UninstallResult.Failure -> {
+                        onLog(
+                            LogEntry(
+                                "Shizuku 打开卸载页失败（${result.reason}），改用普通方式",
+                                "am start failed: ${result.reason}"
+                            )
+                        )
+                        fallbackUninstall(item)
+                    }
+                }
+            }
+        }.start()
+    }
+
+    /** 降级方案：普通 Intent（部分 ROM 可用），再失败则跳应用信息页 */
+    private fun fallbackUninstall(item: AppItem) {
+        // A. 普通 ACTION_DELETE
         try {
             val intent = Intent(Intent.ACTION_DELETE).apply {
                 data = Uri.parse("package:${item.pkg}")
-                putExtra(Intent.EXTRA_RETURN_RESULT, false)
             }
             context.startActivity(intent)
-            onLog(LogEntry("已打开系统卸载页：${item.pkg}", "ACTION_DELETE ${item.pkg}"))
+            onLog(LogEntry("已打开卸载页：${item.pkg}", "ACTION_DELETE ${item.pkg}"))
             return
         } catch (t: Throwable) {
-            onLog(LogEntry("ACTION_DELETE 不可用，尝试应用详情页", "ACTION_DELETE failed: ${t.message}"))
+            onLog(LogEntry("普通卸载页打不开，跳转应用信息页", "ACTION_DELETE failed: ${t.message}"))
         }
 
-        // 方案 B：应用详情页（几乎所有 ROM 都支持）
+        // B. 应用信息页
         try {
             val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                 data = Uri.parse("package:${item.pkg}")
@@ -255,9 +301,8 @@ class AppAdapter(
                 )
             )
         } catch (t: Throwable) {
-            // 方案 C：都失败，至少让用户看到反馈
-            toast("无法打开卸载页，请到系统设置里手动卸载")
-            onLog(LogEntry("无法打开卸载页：${item.pkg}", "all uninstall intents failed: ${t.message}"))
+            toast("无法打开卸载页，请到「设置 → 应用管理」里手动卸载")
+            onLog(LogEntry("无法打开任何卸载相关页面：${item.pkg}", "all intents failed: ${t.message}"))
         }
     }
 

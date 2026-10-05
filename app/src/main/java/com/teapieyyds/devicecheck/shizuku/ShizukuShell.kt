@@ -74,6 +74,80 @@ object ShizukuShell {
         return if (out.isNotEmpty()) out else err
     }
 
+    /** 打开卸载页的结果 */
+    sealed class UninstallResult {
+        object Success : UninstallResult()
+        data class Failure(val reason: String) : UninstallResult()
+    }
+
+    /**
+     * 以 shell（adb）身份打开指定包的系统卸载页。
+     *
+     * 为什么绕这一圈？
+     *  - 普通 App 直接发 ACTION_DELETE，在 OPPO ColorOS / vivo OriginOS 等
+     *    ROM 上会被拦截：Activity 被创建后立即 finish，表现为「跳一下又回来」。
+     *  - 而 shell 拥有 android.permission.DELETE_PACKAGES，用 `am start` 发起
+     *    同样的 Intent 就不会被拦，系统卸载页能正常打开。
+     *
+     * 安全性：
+     *  - 只是**打开页面**，不会直接卸载 —— 最终是否卸载由用户在系统页面上决定
+     *  - 包名做了白名单校验，防止命令注入
+     *
+     * 必须在工作线程调用。
+     */
+    fun openUninstallPage(pkg: String): UninstallResult {
+        // 防注入：包名只允许字母数字点下划线
+        if (!pkg.matches(Regex("^[A-Za-z0-9_.]+$"))) {
+            return UninstallResult.Failure("包名格式异常，已拒绝执行")
+        }
+        val cmd = "am start -a android.intent.action.DELETE -d package:$pkg 2>&1"
+        val out = exec(cmd).trim()
+
+        // am start 成功：输出含 "Starting: Intent" 或 "Activity:"
+        // 失败：含 "Error:" / "Permission Denial" / "SecurityException"
+        val looksOk = out.contains("Starting:", ignoreCase = true) ||
+            out.contains("Activity:", ignoreCase = true)
+        val looksBad = out.contains("Permission Denial", ignoreCase = true) ||
+            out.contains("SecurityException", ignoreCase = true) ||
+            out.contains("Error type", ignoreCase = true) ||
+            out.contains("does not exist", ignoreCase = true)
+
+        return when {
+            looksOk && !looksBad -> UninstallResult.Success
+            looksBad -> UninstallResult.Failure(friendlyReason(out))
+            // 输出异常但没明确报错：也算成功（可能是不同 ROM 的输出格式）
+            else -> UninstallResult.Success
+        }
+    }
+
+    /**
+     * 备用：用 shell 身份打开「应用信息页」。
+     * 当卸载页打不开时（或用户主动选择）使用。
+     */
+    fun openAppDetailsPage(pkg: String): UninstallResult {
+        if (!pkg.matches(Regex("^[A-Za-z0-9_.]+$"))) {
+            return UninstallResult.Failure("包名格式异常，已拒绝执行")
+        }
+        val cmd = "am start -a android.settings.APPLICATION_DETAILS_SETTINGS -d package:$pkg 2>&1"
+        val out = exec(cmd).trim()
+        return if (out.contains("Error", ignoreCase = true) ||
+            out.contains("Exception", ignoreCase = true)
+        ) {
+            UninstallResult.Failure(friendlyReason(out))
+        } else {
+            UninstallResult.Success
+        }
+    }
+
+    /** 把 shell 报错翻译成人话 */
+    private fun friendlyReason(raw: String): String = when {
+        raw.contains("Permission Denial") -> "权限不足，请确认 Shizuku 已授权"
+        raw.contains("does not exist") || raw.contains("not installed") ->
+            "找不到该应用（可能已被卸载）"
+        raw.contains("Exception") -> "系统拒绝打开该页面"
+        else -> raw.ifBlank { "未知错误" }
+    }
+
     /** 反射调用 Shizuku.newProcess */
     private fun newProcess(cmd: Array<String>): Process? {
         return try {
