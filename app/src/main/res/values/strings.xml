@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">设备体检</string>
+    <string name="shizuku_need_permission">需要 Shizuku 授权才能读取系统信息\n请在弹窗中点「允许」</string>
+    <string name="shizuku_not_running">Shizuku 服务未运行\n请先启动 Shizuku 后再回来</string>
 </resources>

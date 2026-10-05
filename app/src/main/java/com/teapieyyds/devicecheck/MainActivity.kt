@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.teapieyyds.devicecheck.model.AppItem
 import com.teapieyyds.devicecheck.model.LogEntry
 import com.teapieyyds.devicecheck.shizuku.ShizukuShell
+import rikka.shizuku.Shizuku
 import java.util.concurrent.Executors
 
 /**
@@ -34,6 +35,19 @@ class MainActivity : AppCompatActivity() {
 
     /** true=人话模式，false=原样模式 */
     private var humanMode = true
+
+    /** Shizuku 权限监听器 */
+    private val permissionListener =
+        Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+            if (requestCode == ShizukuShell.PERMISSION_REQUEST_CODE) {
+                runOnUiThread { checkShizukuState() }
+            }
+        }
+
+    private val binderListener =
+        Shizuku.OnBinderReceivedListener {
+            runOnUiThread { checkShizukuState() }
+        }
 
     /** 扫描用的后台线程 */
     private val scanThread = Executors.newSingleThreadExecutor()
@@ -70,12 +84,47 @@ class MainActivity : AppCompatActivity() {
             renderLog()
         }
 
+        // 注册 Shizuku 监听器
+        try {
+            Shizuku.addRequestPermissionResultListener(permissionListener)
+            Shizuku.addBinderReceivedListener(binderListener)
+        } catch (t: Throwable) {
+            // Shizuku 未安装/未运行时可能抛异常，忽略
+        }
+
+        checkShizukuState()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // 回到前台时重新检查（用户可能刚从 Shizuku 里授权回来）
         checkShizukuState()
     }
 
     private fun checkShizukuState() {
-        val ok = ShizukuShell.isAvailable() && ShizukuShell.hasPermission()
-        shizukuTip.visibility = if (ok) View.GONE else View.VISIBLE
+        val available = ShizukuShell.isAvailable()
+        val granted = available && ShizukuShell.hasPermission()
+
+        when {
+            granted -> {
+                // 已授权：隐藏提示，扫描可用
+                shizukuTip.visibility = View.GONE
+                btnScan.isEnabled = true
+            }
+            available -> {
+                // Shizuku 在跑，但本应用没授权：显示提示 + 主动请求
+                shizukuTip.text = getString(R.string.shizuku_need_permission)
+                shizukuTip.visibility = View.VISIBLE
+                btnScan.isEnabled = true
+                ShizukuShell.requestPermission()
+            }
+            else -> {
+                // Shizuku 服务没运行
+                shizukuTip.text = getString(R.string.shizuku_not_running)
+                shizukuTip.visibility = View.VISIBLE
+                btnScan.isEnabled = true
+            }
+        }
     }
 
     private fun startScan() {
@@ -151,5 +200,11 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         engine?.shutdown()
         scanThread.shutdownNow()
+        try {
+            Shizuku.removeRequestPermissionResultListener(permissionListener)
+            Shizuku.removeBinderReceivedListener(binderListener)
+        } catch (t: Throwable) {
+            // 忽略
+        }
     }
 }
