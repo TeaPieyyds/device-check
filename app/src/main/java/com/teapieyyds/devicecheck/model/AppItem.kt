@@ -29,7 +29,9 @@ data class AppItem(
     /** 安装来源（null=未知/系统预装） */
     val installer: String?,
     /** 危险权限（用于分享给 AI 时补充信息） */
-    val permissions: List<String> = emptyList()
+    val permissions: List<String> = emptyList(),
+    /** 是否为当前活跃的设备管理员 */
+    val isActiveAdmin: Boolean = false
 ) {
     /** 展示用名称 */
     val displayName: String get() = label ?: pkg
