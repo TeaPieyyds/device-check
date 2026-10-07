@@ -67,7 +67,7 @@ class AppAdapter(
         val btnSafe = view.findViewById<Button>(R.id.btn_safe)
         val btnDelete = view.findViewById<Button>(R.id.btn_delete)
 
-        tvName.text = item.displayName
+        tvName.text = if (item.isActiveAdmin) "🔐 ${item.displayName}" else item.displayName
         tvPkg.text = item.pkg
 
         // 状态灯 + 说明
