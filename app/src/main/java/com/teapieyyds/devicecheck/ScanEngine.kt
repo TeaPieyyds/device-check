@@ -190,7 +190,10 @@ class ScanEngine(
             }
             if (counting) {
                 if (l.startsWith("com.") || l.startsWith("org.")) {
-                    admins.add(l.substringBefore(':'))
+                    // 形如 com.demo.admintest/.TestDeviceAdminReceiver
+                    // 取「/」前的包名部分，与应用列表的纯包名对齐
+                    val comp = l.substringBefore(':')
+                    admins.add(comp.substringBefore('/'))
                 } else if (l.startsWith("Enabled") || l.isEmpty()) {
                     counting = false
                 }
