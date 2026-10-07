@@ -265,15 +265,15 @@ class MainActivity : AppCompatActivity() {
 
     /**
      * 按当前排序模式重排 items。
-     * 权重：可疑(黄)=0，正常(绿)=1，红=0（未用）。
+     * 权重：红(危险)=0，黄(未知)=1，绿(正常)=2。
      * 同一权重内保持原有相对顺序（稳定），避免每次刷新都跳动。
      */
     private fun sortItems() {
         val weight = { l: com.teapieyyds.devicecheck.model.Light ->
             when (l) {
-                com.teapieyyds.devicecheck.model.Light.YELLOW -> 0
                 com.teapieyyds.devicecheck.model.Light.RED -> 0
-                com.teapieyyds.devicecheck.model.Light.GREEN -> 1
+                com.teapieyyds.devicecheck.model.Light.YELLOW -> 1
+                com.teapieyyds.devicecheck.model.Light.GREEN -> 2
             }
         }
         val sorted = items.withIndex().sortedWith(
