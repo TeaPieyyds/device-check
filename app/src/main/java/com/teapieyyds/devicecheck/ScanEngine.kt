@@ -44,6 +44,7 @@ class ScanEngine(
      */
     fun scan() {
         Whitelist.load(context)
+        ThreatDB.load(context)
         onStatus("正在检查权限…")
 
         if (!ShizukuShell.isAvailable()) {
@@ -60,20 +61,15 @@ class ScanEngine(
 
         onStatus("扫描中…")
 
-        val latch = CountDownLatch(3)
+        // 先同步读取设备管理员列表（后续应用判定要用），再并行其余
+        val activeAdmins = runCatching { scanDeviceAdmin() }.getOrDefault(emptySet())
+
+        val latch = CountDownLatch(2)
 
         // 并行：应用列表
         pool.execute {
             try {
-                scanPackages()
-            } finally {
-                latch.countDown()
-            }
-        }
-        // 并行：设备管理员
-        pool.execute {
-            try {
-                scanDeviceAdmin()
+                scanPackages(activeAdmins)
             } finally {
                 latch.countDown()
             }
@@ -92,7 +88,7 @@ class ScanEngine(
         onLog(LogEntry("全部检查完成", "# scan finished"))
     }
 
-    private fun scanPackages() {
+    private fun scanPackages(activeAdmins: Set<String>) {
         onLog(LogEntry("正在读取应用列表…", "pm list packages -f --user 0"))
         val output = ShizukuShell.exec("pm list packages -f --user 0")
         val lines = output.lineSequence().filter { it.startsWith("package:") }.toList()
@@ -131,10 +127,20 @@ class ScanEngine(
                 }
             }.getOrNull()
 
+            val threat = ThreatDB.match(pkg)
             val hit = Whitelist.match(pkg)
+            val isAdmin = pkg in activeAdmins
             val light: Light
             val note: String?
-            if (hit != null) {
+            if (threat != null) {
+                // 0. 威胁库命中：最高优先级，直接判红
+                light = Light.RED
+                note = ThreatDB.describe(threat)
+            } else if (isAdmin) {
+                // 0.5 活跃设备管理员：高风险，值得警惕
+                light = Light.RED
+                note = "⚠️ 已激活为设备管理员 · 可能阻止卸载，请确认是否认识"
+            } else if (hit != null) {
                 // 1. 白名单命中：我认识它
                 light = Light.GREEN
                 val hitName = hit.first
@@ -157,7 +163,8 @@ class ScanEngine(
                     note = note,
                     light = light,
                     launchable = launchable,
-                    installer = installer
+                    installer = installer,
+                    isActiveAdmin = isAdmin
                 )
             )
         }
@@ -170,10 +177,10 @@ class ScanEngine(
         )
     }
 
-    private fun scanDeviceAdmin() {
+    private fun scanDeviceAdmin(): Set<String> {
         onLog(LogEntry("正在检查设备管理员…", "dumpsys device_policy"))
         val output = ShizukuShell.exec("dumpsys device_policy")
-        val admins = mutableListOf<String>()
+        val admins = mutableSetOf<String>()
         var counting = false
         for (raw in output.lineSequence()) {
             val l = raw.trim()
@@ -195,6 +202,7 @@ class ScanEngine(
                 output.take(1500).trim()
             )
         )
+        return admins
     }
 
     private fun scanAccessibilityAndBoot() {
