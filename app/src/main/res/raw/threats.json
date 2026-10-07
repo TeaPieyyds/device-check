@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "updated": "2026-10-07",
+  "note": "已知恶意/高危应用特征库。数据来源于公开安全分析报告（CN-SEC 木马分析等），仅用于本机自查，不涉及样本分发。",
+  "threats": {
+    "com.system.service": {
+      "family": "System Service",
+      "level": "HIGH",
+      "risk": 100,
+      "type": "安卓远控木马 / RAT",
+      "alias": ["SystemService", "SystemBridge", "Bridge"],
+      "note": "伪装成系统服务的远控木马，无桌面图标；具备设备管理员防卸载、开机自启、前台服务保活；可远程录音（含通话内录）、后台偷拍、截屏、读短信验证码、全屏钓鱼。",
+      "ioc": [
+        "content://com.system.service.bridge",
+        "content://com.tikttok.a11y.provider",
+        "AUDIO_SOURCE_REMOTE_SUBMIX",
+        "PHISH_BRIDGE_VERSION"
+      ]
+    },
+    "com.servers.ozzbzk": {
+      "family": "System Service",
+      "level": "HIGH",
+      "risk": 100,
+      "type": "恶意投放包（病毒主包名）",
+      "alias": ["ozzbzk"],
+      "note": "病毒吧等通告中提到的 System Service 木马主包名，多随「A站/AcFan」等第三方安装包夹带投放。",
+      "ioc": []
+    },
+    "com.tikttok.a11y": {
+      "family": "System Service",
+      "level": "HIGH",
+      "risk": 95,
+      "type": "同源无障碍组件",
+      "alias": ["tikttok"],
+      "note": "System Service 木马依赖的配套无障碍服务组件（注意拼写为 tikttok 而非 tiktok），与主包配合完成远程手势操控。",
+      "ioc": [
+        "content://com.tikttok.a11y.provider"
+      ]
+    }
+  }
+}
