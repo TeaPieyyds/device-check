@@ -161,7 +161,6 @@
 **手动找下载入口**：
 
 - **Releases 页**（推荐）：仓库右侧 → Releases → 最新版本 → Assets → `app-release.apk`
-- **Actions 页**（备用）：仓库顶部 → Actions → 最新绿色✓的 `Build APK` → 底部 Artifacts → `devicecheck-release-signed`（zip）
 
 > ⚠️ 安装时系统可能提示「未知来源」，需要手动允许。
 > 本应用不联网、不上传数据，如有疑虑可自行审阅源码或直接构建。
@@ -232,7 +231,7 @@ Release 签名所需的 keystore 通过 **GitHub Secrets** 注入，不会进入
 
 - 版本：`1.0.0 (1)`
 - 体积：Release APK 约 675 KB
-- 下载：见仓库 [Releases](../../releases) 页面（或 Actions 里的构建产物）
+- 下载：见仓库 [**Releases**](https://github.com/TeaPieyyds/device-check/releases/latest) 页面
 
 ---
 
