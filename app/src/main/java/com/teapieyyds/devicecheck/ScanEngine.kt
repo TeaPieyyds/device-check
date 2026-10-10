@@ -136,22 +136,22 @@ class ScanEngine(
                 // 0. 威胁库命中：最高优先级，直接判红
                 light = Light.RED
                 note = ThreatDB.describe(threat)
-            } else if (isAdmin) {
-                // 0.5 活跃设备管理员：高风险，值得警惕
-                light = Light.RED
-                note = "⚠️ 已激活为设备管理员 · 可能阻止卸载，请确认是否认识"
             } else if (hit != null) {
-                // 1. 白名单命中：我认识它
+                // 1. 白名单命中：我认识它（即使是系统管理员，也标绿）
                 light = Light.GREEN
                 val hitName = hit.first
                 val hitNote = hit.second
                 note = if (hitName.isNotEmpty()) "$hitName · $hitNote" else hitNote
+            } else if (isAdmin) {
+                // 2. 未在白名单、却是活跃设备管理员：高风险，值得警惕
+                light = Light.RED
+                note = "⚠️ 已激活为设备管理员 · 可能阻止卸载，请确认是否认识"
             } else if (isSystemApp) {
-                // 2. 系统分区预装：出厂自带，不需要用户判断
+                // 3. 系统分区预装：出厂自带，不需要用户判断
                 light = Light.GREEN
                 note = "系统预装应用 · 出厂自带，正常"
             } else {
-                // 3. 其余：我不认识，交给用户判断
+                // 4. 其余：我不认识，交给用户判断
                 light = Light.YELLOW
                 note = null
             }
